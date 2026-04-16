@@ -1,0 +1,63 @@
+# sentinel_config.yaml — API Sentinel Configuration
+#
+# Copy this file to sentinel_config.yaml and update the values for your API.
+# Token values are environment variable NAMES, not raw secrets.
+
+meta:
+  project: my-api
+  base_url: https://api.example.com
+  timeout_seconds: 10
+
+auth:
+  # These are env var names — set the actual tokens in your environment or .env file
+  token_primary: SENTINEL_TOKEN_A
+  token_secondary: SENTINEL_TOKEN_B     # optional; enables BOLA checks
+
+endpoints:
+  - path: /resource/{id}
+    method: GET
+    requires_auth: true
+    test_ids: [1, 2, 3]
+    owned_by: token_primary
+
+  - path: /user/profile
+    method: GET
+    requires_auth: true
+    owned_by: token_primary
+
+  - path: /auth/login
+    method: POST
+    requires_auth: false
+    rate_limit_sensitive: true
+
+checks:
+  transport:
+    enabled: true
+    require_https_redirect: true
+    min_tls_version: "1.2"
+    check_cert_expiry_days: 30
+
+  headers:
+    enabled: true
+    required:
+      - Strict-Transport-Security
+      - X-Content-Type-Options
+      - X-Frame-Options
+    forbidden_leakage:
+      - X-Powered-By
+      - Server
+
+  auth:
+    enabled: true
+
+  authorization:
+    enabled: true                       # requires token_secondary
+
+  rate_limit:
+    enabled: true
+    request_burst: 20
+    burst_window_seconds: 5
+
+  input_handling:
+    enabled: true
+    max_payload_kb: 10240
