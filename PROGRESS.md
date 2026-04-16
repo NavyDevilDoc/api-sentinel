@@ -4,6 +4,68 @@ Newest entries first.
 
 ---
 
+## v0.1.0 — Initial Release
+
+**Status:** Complete
+**Date:** 2026-04-16
+**Repository:** https://github.com/NavyDevilDoc/api-sentinel (private)
+
+### Summary
+
+All 9 build phases complete. 152 tests passing. 43 files, 8,015 lines of code.
+Pushed to GitHub as a private repository for pre-release testing against animeintel.app.
+
+### Final Metrics
+
+| Metric | Value |
+|---|---|
+| Source files | 22 (sentinel/) |
+| Test files | 9 (tests/) |
+| Total tests | 152 |
+| Check categories | 6 (transport, headers, auth, authorization, rate_limit, input_handling) |
+| LLM backends | 4 (gemini, claude, openai, ollama) |
+| OWASP Top 10 coverage | ~65-70% |
+| Python version | 3.11+ (tested on 3.14.2) |
+| Platform tested | Windows 11 |
+
+### Architecture Highlights
+
+- **Pydantic for all data shapes** — config, results, reports. No raw dicts between modules.
+- **Async from day one** — BaseCheck.run() is async; CLI uses asyncio.run(). Rate limit burst
+  testing uses asyncio.create_task() + asyncio.wait() for true concurrent requests.
+- **CHECK_REGISTRY pattern** — simple dict mapping category name to check class. Each phase
+  added its entry without modifying the runner's core logic.
+- **Token resolution inside checks** — each check module resolves its own env vars. The runner
+  stays decoupled from auth concerns.
+- **Optional LLM dependencies** — core tool has zero LLM SDK requirements. Users install what
+  they need via pip extras.
+
+### Issues Encountered and Resolved (across all phases)
+
+1. **Windows cp1252 encoding** (Phase 1) — Rich Unicode chars fail on legacy terminal. Fixed
+   with ASCII fallbacks and UTF-8 stdout wrapper.
+2. **Rich ANSI in test assertions** (Phase 1) — force_terminal=True breaks string matching.
+   Fixed with force_terminal=False in test console.
+3. **TLS version detection** (Phase 2) — httpx doesn't expose negotiated TLS. Solved with
+   raw ssl.SSLSocket via run_in_executor.
+4. **Cert expiry off-by-one** (Phase 2) — timing-sensitive day count in tests. Fixed by
+   asserting threshold instead of exact days.
+5. **Shared helper refactor** (Phase 4) — endpoint_slug/resolve_path moved from auth.py to
+   base.py when rate_limit.py needed them too.
+6. **Async concurrency test flakiness** (Phase 4) — itertools.count()-based respx side_effect
+   controls response ordering regardless of asyncio scheduling.
+7. **importlib.import_module mock interference** (Phase 8) — global importlib patching broke
+   unittest.mock internals. Fixed with patch.dict("sys.modules").
+
+### Next Steps
+
+- Test against animeintel.app with a real sentinel_config.yaml
+- Review findings and triage false positives
+- Address any issues discovered during real-world testing
+- Make repository public when confident in results
+
+---
+
 ## Phase 9 — User Guide & README
 
 **Status:** Complete
