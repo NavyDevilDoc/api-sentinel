@@ -49,8 +49,12 @@ These do not get negotiated away during implementation.
    variables. The YAML references env var names, not values.
 8. **Cybersecurity best practices from day one.** A tool that tests security cannot
    itself be a security liability.
-9. **CLI only. No GUI, no Streamlit, no web server.** The outlet tester does not
-   require a running process to give you a result.
+9. **CLI is the primary interface.** An optional UI extra
+   (`pip install api-sentinel[ui]`) provides a localhost-only web frontend over
+   the same runner/reporter primitives. The UI never accepts secret values as
+   input — only environment variable *names*. CI/CD integration continues to
+   use the CLI exclusively. (This constraint was renegotiated on 2026-05-16
+   from a prior "CLI only" stance — see PROGRESS.md.)
 
 ---
 
@@ -95,22 +99,36 @@ api_sentinel/
 │   │   ├── rate_limit.py            ← throttling, 429 behavior
 │   │   └── input_handling.py        ← payload size, malformed input, injection probes
 │   │
-│   └── utils/
-│       ├── http_client.py           ← shared httpx client, retry logic
-│       └── env_loader.py            ← safe env var resolution
+│   ├── utils/
+│   │   ├── http_client.py           ← shared httpx client, retry logic
+│   │   └── env_loader.py            ← safe env var resolution
+│   │
+│   └── ui/                          ← optional [ui] extra
+│       ├── __init__.py              ← import gate (fails clean if extras missing)
+│       ├── server.py                ← FastAPI app factory
+│       ├── launcher.py              ← `sentinel ui` entry point
+│       ├── routes/                  ← page + HTMX fragment routes
+│       ├── services/                ← scan_runner, config_io
+│       ├── templates/               ← Jinja2 templates + partials
+│       └── static/                  ← htmx.min.js (vendored), styles.css
 │
 └── tests/
     ├── conftest.py
     ├── unit/
     │   ├── test_config.py
     │   └── test_reporter.py
-    └── security/
-        ├── test_transport.py
-        ├── test_headers.py
-        ├── test_auth.py
-        ├── test_authorization.py
-        ├── test_rate_limit.py
-        └── test_input_handling.py
+    ├── security/
+    │   ├── test_transport.py
+    │   ├── test_headers.py
+    │   ├── test_auth.py
+    │   ├── test_authorization.py
+    │   ├── test_rate_limit.py
+    │   └── test_input_handling.py
+    └── ui/                          ← UI route + invariant tests
+        ├── test_routes_pages.py
+        ├── test_routes_config.py
+        ├── test_routes_scans.py
+        └── test_env_var_isolation.py
 ```
 
 ---
@@ -212,12 +230,24 @@ class CheckResult(BaseModel):
 ## CLI Interface
 
 ```
-usage: sentinel [-h] [--config PATH] [--output {terminal,json,both}]
-                [--severity {critical,warning,info,all}]
-                [--checks {transport,headers,auth,rate_limit,input,all}]
-                [--fail-on {critical,warning,any}]
-                [--report {llm}]
-                [--llm-backend {gemini,claude,openai,ollama}]
+usage: sentinel [-h] {scan,ui,init} ...
+
+Subcommands:
+  scan    Run security checks against an API (default)
+  ui      Start the local web UI (requires the [ui] extra)
+  init    Initialize a sentinel_config.yaml from an OpenAPI spec
+
+Bare `sentinel ...` (no subcommand) is rewritten to `sentinel scan ...` for
+backward compatibility with v0.1.0 invocations.
+```
+
+```
+usage: sentinel scan [-h] [--config PATH] [--output {terminal,json,both}]
+                     [--severity {critical,warning,info,all}]
+                     [--checks {transport,headers,auth,rate_limit,input,all}]
+                     [--fail-on {critical,warning,any}]
+                     [--report {llm}]
+                     [--llm-backend {gemini,claude,openai,ollama}]
 
 Options:
   --config PATH          Path to sentinel_config.yaml (default: ./sentinel_config.yaml)
@@ -227,6 +257,22 @@ Options:
   --fail-on              Exit code 1 if findings exist at this severity (default: critical)
   --report llm           Append an LLM-generated narrative report (Power User feature)
   --llm-backend          LLM provider for --report llm (default: gemini)
+```
+
+```
+usage: sentinel ui [-h] [--host HOST] [--port PORT] [--no-browser]
+
+Options:
+  --host HOST            Interface to bind to (default: 127.0.0.1, localhost-only)
+  --port PORT            Port to listen on (default: 8765; falls back to a free port if in use)
+  --no-browser           Do not auto-open the browser after starting the server
+```
+
+```
+usage: sentinel init [-h] [--spec SPEC]
+
+Options:
+  --spec SPEC            Path or URL to an OpenAPI/Swagger spec to import
 ```
 
 **Exit codes:**

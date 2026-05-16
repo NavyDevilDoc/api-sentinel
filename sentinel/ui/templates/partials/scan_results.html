@@ -1,0 +1,91 @@
+{# partials/scan_results.html — rendered once scan.status == 'complete'.
+   The whole thing is wrapped in #scan-results-area so the severity filter
+   buttons can HTMX-swap it in place. Required context: scan, counts,
+   categories, active_filter. #}
+<div id="scan-results-area">
+    <p class="scan-summary">
+        Critical: <span class="severity-critical">{{ counts.critical }}</span>
+        &middot;
+        Warnings: <span class="severity-warning">{{ counts.warning }}</span>
+        &middot;
+        Info: <span class="severity-info">{{ counts.info }}</span>
+        &middot;
+        Passed: <span class="severity-pass">{{ counts.passed }}</span>/{{ counts.total }}
+        &middot;
+        Duration: {{ scan.run_result.duration_ms | round(0) | int }} ms
+    </p>
+
+    <div class="scan-actions">
+        <a class="btn-secondary"
+           href="/scans/{{ scan.id }}/export.json"
+           download="sentinel-scan-{{ scan.id[:8] }}.json">
+            Download JSON
+        </a>
+        <form method="post"
+              action="/scans?path={{ scan.config_path | urlencode }}"
+              class="rescan-form">
+            <button type="submit" class="btn-primary">
+                Re-scan with same config
+            </button>
+        </form>
+    </div>
+
+    <div class="severity-filter">
+        <span class="severity-filter-label">Show:</span>
+        <button type="button"
+                hx-get="/scans/{{ scan.id }}/results?filter=all"
+                hx-target="#scan-results-area"
+                hx-swap="outerHTML"
+                class="btn-filter{% if active_filter == 'all' %} btn-active{% endif %}">
+            All ({{ counts.total }})
+        </button>
+        <button type="button"
+                hx-get="/scans/{{ scan.id }}/results?filter=critical"
+                hx-target="#scan-results-area"
+                hx-swap="outerHTML"
+                class="btn-filter{% if active_filter == 'critical' %} btn-active{% endif %}">
+            Critical only ({{ counts.critical }})
+        </button>
+        <button type="button"
+                hx-get="/scans/{{ scan.id }}/results?filter=warning"
+                hx-target="#scan-results-area"
+                hx-swap="outerHTML"
+                class="btn-filter{% if active_filter == 'warning' %} btn-active{% endif %}">
+            Warning+ ({{ counts.critical + counts.warning }})
+        </button>
+        <button type="button"
+                hx-get="/scans/{{ scan.id }}/results?filter=pass"
+                hx-target="#scan-results-area"
+                hx-swap="outerHTML"
+                class="btn-filter{% if active_filter == 'pass' %} btn-active{% endif %}">
+            Passing only ({{ counts.passed }})
+        </button>
+    </div>
+
+    {% if categories %}
+    {% for category, results in categories.items() %}
+    <h3>{{ category | replace('_', ' ') | upper }}</h3>
+    <ul class="findings">
+        {% for r in results %}
+        <li class="finding severity-{{ r.severity.value if r.severity.value is defined else r.severity }}">
+            <span class="severity-badge severity-badge-{{ r.severity.value if r.severity.value is defined else r.severity }}">
+                {{ (r.severity.value if r.severity.value is defined else r.severity) | upper }}
+            </span>
+            <span class="finding-name">{{ r.name }}</span>
+            {% if r.endpoint %}<span class="muted">on <code>{{ r.endpoint }}</code></span>{% endif %}
+            {% if r.detail and not r.passed %}
+            <div class="finding-detail">
+                <div>{{ r.detail }}</div>
+                {% if r.recommendation %}
+                <div class="finding-fix"><strong>Fix:</strong> {{ r.recommendation }}</div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% endfor %}
+    {% else %}
+    <p class="muted">No findings match the current filter.</p>
+    {% endif %}
+</div>

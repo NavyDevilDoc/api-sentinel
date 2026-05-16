@@ -1,0 +1,695 @@
+:root {
+    --bg: #ffffff;
+    --bg-subtle: #f7f9fb;
+    --text: #1a1a1a;
+    --muted: #666666;
+    --accent: #0066cc;
+    --border: #e1e5ea;
+    --critical: #c0392b;
+    --warning: #d68910;
+    --pass: #27ae60;
+    --info: #2980b9;
+    --radius: 6px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.55;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    border-bottom: 1px solid var(--border);
+    padding: 0.9rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-subtle);
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.4rem;
+    letter-spacing: -0.01em;
+}
+
+nav a {
+    margin-left: 1.25rem;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+nav a:hover { text-decoration: underline; }
+
+main {
+    flex: 1;
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+main h2 {
+    margin-top: 0;
+    font-size: 1.6rem;
+}
+
+footer {
+    border-top: 1px solid var(--border);
+    padding: 0.75rem 2rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+    text-align: center;
+    background: var(--bg-subtle);
+}
+
+.muted { color: var(--muted); }
+
+code {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    padding: 0.1em 0.4em;
+    border-radius: var(--radius);
+    font-size: 0.9em;
+    font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+}
+
+ul { padding-left: 1.25rem; }
+ul li { margin-bottom: 0.25rem; }
+
+/* ---------------------------------------------------------------------- */
+/* Config viewer (Phase UI-3)                                             */
+/* ---------------------------------------------------------------------- */
+
+.alert {
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+}
+
+.alert-error {
+    background: #fff5f5;
+    border: 1px solid #fed7d7;
+    color: var(--critical);
+}
+
+.empty-state {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    text-align: center;
+}
+
+.empty-state h3 {
+    margin-top: 0;
+}
+
+.empty-state code {
+    display: inline-block;
+    margin-top: 0.25rem;
+}
+
+dl.meta {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    column-gap: 1.25rem;
+    row-gap: 0.4rem;
+    margin: 0.75rem 0 1.5rem;
+}
+
+dl.meta dt {
+    color: var(--muted);
+    font-weight: 500;
+}
+
+dl.meta dd {
+    margin: 0;
+}
+
+table.endpoints,
+table.checks {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75rem 0 1.5rem;
+}
+
+table.endpoints th,
+table.endpoints td,
+table.checks th,
+table.checks td {
+    text-align: left;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+}
+
+table.endpoints th,
+table.checks th {
+    background: var(--bg-subtle);
+    font-weight: 600;
+    font-size: 0.78rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.method {
+    display: inline-block;
+    padding: 0.15em 0.55em;
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+    letter-spacing: 0.02em;
+}
+
+.method-get    { background: #e3f2fd; color: #1565c0; }
+.method-post   { background: #e8f5e9; color: #2e7d32; }
+.method-put    { background: #fff3e0; color: #ef6c00; }
+.method-patch  { background: #f3e5f5; color: #6a1b9a; }
+.method-delete { background: #ffebee; color: #c62828; }
+
+.env-missing {
+    color: var(--warning);
+    font-style: italic;
+    font-size: 0.9em;
+    margin-left: 0.4em;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Config editor (Phase UI-5)                                             */
+/* ---------------------------------------------------------------------- */
+
+.config-editor fieldset {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin: 0 0 1.5rem 0;
+    padding: 1rem 1.25rem 1.25rem;
+}
+
+.config-editor fieldset legend {
+    padding: 0 0.5em;
+    font-weight: 600;
+    color: var(--text);
+    font-size: 1.05rem;
+}
+
+.form-row {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0.75rem;
+}
+
+.form-row > label {
+    font-weight: 500;
+    color: var(--muted);
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.form-row input[type="text"],
+.form-row input[type="number"],
+.form-row select,
+.form-row textarea {
+    padding: 0.4em 0.55em;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 0.95rem;
+    background: var(--bg);
+}
+
+.form-row input:focus,
+.form-row select:focus,
+.form-row textarea:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+}
+
+.field-error {
+    color: var(--critical);
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+}
+
+.endpoint-row {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.75rem;
+    background: var(--bg-subtle);
+}
+
+.endpoint-grid {
+    display: grid;
+    grid-template-columns: max-content 1fr max-content;
+    gap: 0.75rem 1rem;
+    align-items: end;
+}
+
+.endpoint-grid-secondary {
+    grid-template-columns: max-content 1fr max-content max-content;
+    margin-top: 0.5rem;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-field > label {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 0.2rem;
+    font-weight: 500;
+}
+
+.form-field-grow {
+    min-width: 0;
+}
+
+.form-field-right {
+    align-self: end;
+    justify-self: end;
+}
+
+.form-field input,
+.form-field select {
+    padding: 0.3em 0.5em;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 0.9rem;
+    background: var(--bg);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding-top: 1rem;
+}
+
+.check-group {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.check-group:last-child {
+    border-bottom: none;
+}
+
+.check-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    cursor: pointer;
+}
+
+.check-settings {
+    margin-left: 1.5rem;
+    margin-top: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    align-items: center;
+    font-size: 0.9rem;
+}
+
+.check-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+}
+
+.check-inline input[type="text"],
+.check-inline input[type="number"] {
+    padding: 0.2em 0.4em;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: inherit;
+    background: var(--bg);
+}
+
+.textarea-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-right: 1.5rem;
+}
+
+.textarea-row textarea {
+    padding: 0.4em 0.55em;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+    font-size: 0.85rem;
+    background: var(--bg);
+    resize: vertical;
+}
+
+.save-bar {
+    border-top: 2px solid var(--border);
+    padding-top: 1rem;
+    margin-top: 1rem;
+}
+
+.save-warning {
+    font-size: 0.9rem;
+    margin: 0 0 0.5rem 0;
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-remove {
+    padding: 0.45em 1em;
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: white;
+}
+
+.btn-primary:hover {
+    filter: brightness(1.1);
+}
+
+.btn-secondary {
+    background: var(--bg);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.btn-secondary:hover {
+    background: var(--bg-subtle);
+}
+
+.btn-remove {
+    background: var(--bg);
+    color: var(--critical);
+    border-color: var(--critical);
+    padding: 0.3em 0.7em;
+    font-size: 0.85rem;
+}
+
+.btn-remove:hover {
+    background: #fff5f5;
+}
+
+.alert-success {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #15803d;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+}
+
+.alert-warning {
+    background: #fefce8;
+    border: 1px solid #fde68a;
+    color: #a16207;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Path picker (viewer + editor)                                          */
+/* ---------------------------------------------------------------------- */
+
+.path-picker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 0.75rem;
+}
+
+.path-picker label {
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.path-picker input[type="text"] {
+    flex: 1;
+    min-width: 16rem;
+    padding: 0.35em 0.55em;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+    font-size: 0.9rem;
+    background: var(--bg);
+}
+
+.path-picker .btn-secondary {
+    text-decoration: none;
+    display: inline-block;
+}
+
+.path-current {
+    font-size: 0.85rem;
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Scans page + scan detail (Phase UI-6)                                  */
+/* ---------------------------------------------------------------------- */
+
+.scan-launcher {
+    margin: 0.5rem 0 1.5rem;
+}
+
+table.scans-list {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.5rem;
+}
+
+table.scans-list th,
+table.scans-list td {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+table.scans-list th {
+    background: var(--bg-subtle);
+    font-weight: 600;
+    font-size: 0.78rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.15em 0.6em;
+    border-radius: 1em;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.status-running {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.status-complete {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.status-error {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.scan-status-line {
+    margin: 0.5rem 0;
+    font-size: 0.95rem;
+    color: var(--muted);
+}
+
+.scan-running {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+}
+
+.spinner-line {
+    margin: 0;
+    color: var(--muted);
+}
+
+.spinner {
+    display: inline-block;
+    animation: spin 1.2s linear infinite;
+    margin-right: 0.4em;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.scan-summary {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+}
+
+.severity-critical { color: var(--critical); font-weight: 600; }
+.severity-warning  { color: var(--warning);  font-weight: 600; }
+.severity-info     { color: var(--info);     font-weight: 600; }
+.severity-pass     { color: var(--pass);     font-weight: 600; }
+
+ul.findings {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 1.5rem;
+}
+
+ul.findings .finding {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4em 0.75em;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+ul.findings .finding:last-child {
+    border-bottom: none;
+}
+
+.severity-badge {
+    display: inline-block;
+    padding: 0.1em 0.55em;
+    border-radius: var(--radius);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+.severity-badge-critical { background: #ffebee; color: var(--critical); }
+.severity-badge-warning  { background: #fff3e0; color: var(--warning); }
+.severity-badge-info     { background: #e3f2fd; color: var(--info); }
+.severity-badge-pass     { background: #e8f5e9; color: var(--pass); }
+
+.finding-name {
+    font-weight: 500;
+}
+
+.finding-detail {
+    flex-basis: 100%;
+    margin-top: 0.25rem;
+    padding-left: 0.5rem;
+    border-left: 3px solid var(--border);
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.finding-fix {
+    margin-top: 0.25rem;
+    color: var(--text);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Scan actions + severity filter (Phase UI-7)                            */
+/* ---------------------------------------------------------------------- */
+
+.scan-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin: 1rem 0 0.5rem;
+}
+
+.scan-actions .rescan-form {
+    margin: 0;
+}
+
+.scan-actions .btn-secondary {
+    text-decoration: none;
+    display: inline-block;
+}
+
+.severity-filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.5rem;
+    margin: 1rem 0;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.severity-filter-label {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-right: 0.25rem;
+}
+
+.btn-filter {
+    padding: 0.3em 0.75em;
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+.btn-filter:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.btn-filter.btn-active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+.btn-filter.btn-active:hover {
+    color: white;
+}

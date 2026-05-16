@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="scan-detail">
+    <h2>Scan {{ scan_id[:8] if scan_id else (scan.id[:8] if scan else '???') }}</h2>
+
+    {% if scan is none %}
+    <div class="alert alert-error">
+        Scan <code>{{ scan_id }}</code> not found.
+        It may have been cleared by a server restart.
+    </div>
+    <p><a href="/scans">&larr; Back to scans</a></p>
+    {% else %}
+
+    {# The Status row lives inside the polled fragment below — keeping it
+       up here would leave it frozen at whatever state existed on initial
+       page load, which the user reported looked like "RUNNING" forever. #}
+    <dl class="meta">
+        <dt>ID</dt><dd><code>{{ scan.id }}</code></dd>
+        <dt>Project</dt><dd>{{ scan.project }}</dd>
+        <dt>Target</dt><dd><code>{{ scan.target }}</code></dd>
+        <dt>Started</dt><dd>{{ scan.started_at.strftime('%Y-%m-%d %H:%M:%S') }} UTC</dd>
+    </dl>
+
+    <div id="scan-status-area">
+        {% include "partials/scan_status.html" %}
+    </div>
+
+    <p><a href="/scans">&larr; Back to scans</a></p>
+    {% endif %}
+</section>
+{% endblock %}

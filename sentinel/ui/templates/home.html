@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="welcome">
+    <h2>Welcome to API Sentinel</h2>
+    <p>
+        Local web UI for running and reviewing API security scans.
+        Everything runs on your machine &mdash; no data leaves localhost.
+    </p>
+
+    <p class="muted">Working today:</p>
+    <ul>
+        <li><a href="/config">Read-only configuration viewer</a> (Phase UI-3)</li>
+        <li><a href="/config/edit">Configuration editor with HTMX swaps</a> (Phase UI-5)</li>
+        <li><a href="/scans">Scan execution with live progress</a> (Phase UI-6)</li>
+    </ul>
+
+    <p class="muted">Coming next:</p>
+    <ul>
+        <li>Findings explorer with severity filters (Phase UI-7)</li>
+    </ul>
+
+    <p class="muted">
+        Need to run a scan right now? The CLI is fully functional:
+        <code>python -m sentinel.cli scan --config sentinel_config.yaml</code>
+    </p>
+</section>
+{% endblock %}

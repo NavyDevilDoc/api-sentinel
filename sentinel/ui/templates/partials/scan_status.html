@@ -1,0 +1,32 @@
+{# partials/scan_status.html — polled by /scans/{id}/status while running.
+   When the scan finishes, this fragment renders WITHOUT the polling
+   trigger, so HTMX stops polling automatically. #}
+<div id="scan-status-area"
+     {% if scan.status == 'running' %}
+     hx-get="/scans/{{ scan.id }}/status"
+     hx-trigger="every 1s"
+     hx-target="this"
+     hx-swap="outerHTML"
+     {% endif %}>
+
+    <p class="scan-status-line">
+        Status: <span class="status-badge status-{{ scan.status }}">{{ scan.status }}</span>
+    </p>
+
+    {% if scan.status == 'running' %}
+    <div class="scan-running">
+        <p class="spinner-line">
+            <span class="spinner">&#9696;</span>
+            Running... {{ scan.duration_ms | round(0) | int }} ms elapsed
+        </p>
+    </div>
+
+    {% elif scan.status == 'error' %}
+    <div class="alert alert-error">
+        <strong>Scan failed:</strong> {{ scan.error }}
+    </div>
+
+    {% elif scan.status == 'complete' %}
+        {% include "partials/scan_results.html" %}
+    {% endif %}
+</div>

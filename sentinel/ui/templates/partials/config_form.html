@@ -1,0 +1,246 @@
+{# partials/config_form.html
+   The entire editable form. Rendered standalone by HTMX swaps after
+   add/remove/save, and also included inside the full-page wrapper. #}
+
+{% if save_success %}
+<div class="alert alert-success">
+    Saved to <code>{{ resolved_path }}</code>.
+    {% if backup_enabled %}A backup was written to <code>{{ resolved_path }}.bak</code>.{% endif %}
+</div>
+{% endif %}
+
+{% if save_warning %}
+<div class="alert alert-warning">
+    {{ save_warning }}
+</div>
+{% endif %}
+
+{% if errors %}
+<div class="alert alert-error">
+    <strong>Validation failed.</strong> Fix the highlighted fields and save again.
+</div>
+{% endif %}
+
+<form id="config-form"
+      hx-post="/config/save?path={{ resolved_path | urlencode }}"
+      hx-target="#config-form-wrapper"
+      hx-swap="innerHTML"
+      hx-include="#config-form">
+
+    <fieldset>
+        <legend>Meta</legend>
+
+        <div class="form-row">
+            <label for="meta_project">Project</label>
+            <input id="meta_project" type="text" name="meta.project"
+                   value="{{ data.meta.project|default('') }}" required>
+            {% if 'meta.project' in errors %}
+            <span class="field-error">{{ errors['meta.project'] }}</span>
+            {% endif %}
+        </div>
+
+        <div class="form-row">
+            <label for="meta_base_url">Base URL</label>
+            <input id="meta_base_url" type="text" name="meta.base_url"
+                   value="{{ data.meta.base_url|default('') }}"
+                   placeholder="https://api.example.com" required>
+            {% if 'meta.base_url' in errors %}
+            <span class="field-error">{{ errors['meta.base_url'] }}</span>
+            {% endif %}
+        </div>
+
+        <div class="form-row">
+            <label for="meta_timeout">Timeout (seconds)</label>
+            <input id="meta_timeout" type="number" step="0.5" min="0.5"
+                   name="meta.timeout_seconds"
+                   value="{{ data.meta.timeout_seconds|default(10) }}" required>
+            {% if 'meta.timeout_seconds' in errors %}
+            <span class="field-error">{{ errors['meta.timeout_seconds'] }}</span>
+            {% endif %}
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Auth</legend>
+
+        <div class="form-row">
+            <label for="auth_primary">Primary token (env var name)</label>
+            <select id="auth_primary" name="auth.token_primary" required>
+                {% if env_var_names %}
+                    {% for name in env_var_names %}
+                    <option value="{{ name }}"{% if name == data.auth.token_primary %} selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                {% else %}
+                    <option value="" disabled selected>no SENTINEL_* env vars in scope &mdash; set one (e.g. SENTINEL_TOKEN_PRIMARY) and reload</option>
+                {% endif %}
+            </select>
+            {% if 'auth.token_primary' in errors %}
+            <span class="field-error">{{ errors['auth.token_primary'] }}</span>
+            {% endif %}
+        </div>
+
+        <div class="form-row">
+            <label for="auth_secondary">Secondary token (optional, env var name)</label>
+            <select id="auth_secondary" name="auth.token_secondary">
+                <option value=""{% if not data.auth.token_secondary %} selected{% endif %}>-- none --</option>
+                {% for name in env_var_names %}
+                <option value="{{ name }}"{% if name == data.auth.token_secondary %} selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+            <span class="muted">Required only if Authorization (BOLA) checks are enabled.</span>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Endpoints ({{ data.endpoints|length }})</legend>
+
+        <div id="endpoints-list">
+            {% for ep in data.endpoints %}
+                {% with index=loop.index0, data=ep %}
+                    {% include "partials/endpoint_row.html" %}
+                {% endwith %}
+            {% endfor %}
+        </div>
+
+        <button type="button" class="btn-secondary"
+                hx-post="/config/endpoints/add?path={{ resolved_path | urlencode }}"
+                hx-target="#config-form-wrapper"
+                hx-swap="innerHTML"
+                hx-include="#config-form">
+            + Add endpoint
+        </button>
+    </fieldset>
+
+    <fieldset>
+        <legend>Checks</legend>
+
+        {# Transport #}
+        <div class="check-group">
+            <label class="check-title">
+                <input type="hidden" name="checks.transport.enabled" value="false">
+                <input type="checkbox" name="checks.transport.enabled" value="true"
+                       {% if data.checks.transport.enabled %}checked{% endif %}>
+                <strong>Transport</strong>
+            </label>
+            <div class="check-settings">
+                <label class="check-inline">
+                    <input type="hidden" name="checks.transport.require_https_redirect" value="false">
+                    <input type="checkbox" name="checks.transport.require_https_redirect" value="true"
+                           {% if data.checks.transport.require_https_redirect %}checked{% endif %}>
+                    Require HTTPS redirect
+                </label>
+                <label class="check-inline">
+                    Min TLS:
+                    <input type="text" name="checks.transport.min_tls_version"
+                           value="{{ data.checks.transport.min_tls_version|default('1.2') }}"
+                           size="6">
+                </label>
+                <label class="check-inline">
+                    Cert warn at:
+                    <input type="number" name="checks.transport.check_cert_expiry_days"
+                           value="{{ data.checks.transport.check_cert_expiry_days|default(30) }}"
+                           min="1" size="5"> days
+                </label>
+            </div>
+        </div>
+
+        {# Headers #}
+        <div class="check-group">
+            <label class="check-title">
+                <input type="hidden" name="checks.headers.enabled" value="false">
+                <input type="checkbox" name="checks.headers.enabled" value="true"
+                       {% if data.checks.headers.enabled %}checked{% endif %}>
+                <strong>Headers</strong>
+            </label>
+            <div class="check-settings">
+                <label class="textarea-row">
+                    Required headers (one per line):
+                    <textarea name="checks.headers.required" rows="3" cols="40">{{ data.checks.headers.required | as_lines }}</textarea>
+                </label>
+                <label class="textarea-row">
+                    Forbidden leakage headers (one per line):
+                    <textarea name="checks.headers.forbidden_leakage" rows="3" cols="40">{{ data.checks.headers.forbidden_leakage | as_lines }}</textarea>
+                </label>
+            </div>
+        </div>
+
+        {# Auth #}
+        <div class="check-group">
+            <label class="check-title">
+                <input type="hidden" name="checks.auth.enabled" value="false">
+                <input type="checkbox" name="checks.auth.enabled" value="true"
+                       {% if data.checks.auth.enabled %}checked{% endif %}>
+                <strong>Auth</strong>
+            </label>
+        </div>
+
+        {# Authorization (BOLA) #}
+        <div class="check-group">
+            <label class="check-title">
+                <input type="hidden" name="checks.authorization.enabled" value="false">
+                <input type="checkbox" name="checks.authorization.enabled" value="true"
+                       {% if data.checks.authorization.enabled %}checked{% endif %}>
+                <strong>Authorization (BOLA)</strong>
+            </label>
+            <div class="check-settings muted">
+                Requires <code>token_secondary</code> to be set.
+            </div>
+        </div>
+
+        {# Rate limit #}
+        <div class="check-group">
+            <label class="check-title">
+                <input type="hidden" name="checks.rate_limit.enabled" value="false">
+                <input type="checkbox" name="checks.rate_limit.enabled" value="true"
+                       {% if data.checks.rate_limit.enabled %}checked{% endif %}>
+                <strong>Rate limit</strong>
+            </label>
+            <div class="check-settings">
+                <label class="check-inline">
+                    Burst:
+                    <input type="number" name="checks.rate_limit.request_burst"
+                           value="{{ data.checks.rate_limit.request_burst|default(20) }}"
+                           min="1" size="5"> requests
+                </label>
+                <label class="check-inline">
+                    over
+                    <input type="number" name="checks.rate_limit.burst_window_seconds"
+                           value="{{ data.checks.rate_limit.burst_window_seconds|default(5) }}"
+                           min="1" size="5"> seconds
+                </label>
+            </div>
+        </div>
+
+        {# Input handling #}
+        <div class="check-group">
+            <label class="check-title">
+                <input type="hidden" name="checks.input_handling.enabled" value="false">
+                <input type="checkbox" name="checks.input_handling.enabled" value="true"
+                       {% if data.checks.input_handling.enabled %}checked{% endif %}>
+                <strong>Input handling</strong>
+            </label>
+            <div class="check-settings">
+                <label class="check-inline">
+                    Max payload:
+                    <input type="number" name="checks.input_handling.max_payload_kb"
+                           value="{{ data.checks.input_handling.max_payload_kb|default(10240) }}"
+                           min="1" size="8"> KB
+                </label>
+            </div>
+        </div>
+
+    </fieldset>
+
+    <div class="save-bar">
+        <p class="muted save-warning">
+            Saving overwrites <code>{{ resolved_path }}</code> and will lose
+            any comments in the existing YAML. Back it up first if needed.
+        </p>
+        <label class="check-inline">
+            <input type="checkbox" name="backup" value="true"
+                   {% if backup_enabled %}checked{% endif %}>
+            Back up to <code>{{ resolved_path }}.bak</code> before saving
+        </label>
+        <button type="submit" class="btn-primary">Save configuration</button>
+    </div>
+</form>

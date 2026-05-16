@@ -1,0 +1,11 @@
+{# partials/env_var_options.html
+   Returns <option> elements only — caller wraps in a <select>.
+   Never include env var VALUES in this template; the service does not
+   surface them and adding them here would break the no-leak invariant. #}
+{% if names %}
+{% for name in names -%}
+<option value="{{ name }}"{% if name == selected %} selected{% endif %}>{{ name }}</option>
+{% endfor %}
+{% else %}
+<option value="" disabled selected>no {{ prefix }}* env vars in scope &mdash; set one first (e.g. {{ prefix }}TOKEN_PRIMARY)</option>
+{% endif %}

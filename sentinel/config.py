@@ -46,7 +46,12 @@ class RateLimitCheckConfig(BaseModel):
 
 class InputHandlingCheckConfig(BaseModel):
     enabled: bool = True
-    max_payload_kb: int = 10240
+    # 1 MB — enough to exercise the rejection path on most APIs without
+    # tripping edge-layer protocol limits (Railway/Vercel/Cloudflare-class
+    # hosts can choke on 10+ MB uploads over HTTP/2). Raise this only if
+    # your API legitimately accepts large bodies and you want to verify
+    # the upper bound.
+    max_payload_kb: int = 1024
 
 
 class ChecksConfig(BaseModel):

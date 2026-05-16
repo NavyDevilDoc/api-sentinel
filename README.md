@@ -18,6 +18,12 @@ For development (includes pytest, respx):
 pip install -e ".[dev]"
 ```
 
+For the local web UI (optional, see [Web UI](#web-ui-optional) below):
+
+```bash
+pip install -e ".[ui]"        # FastAPI + HTMX UI, runs on localhost
+```
+
 For LLM-powered narrative reports (optional):
 
 ```bash
@@ -63,13 +69,54 @@ sentinel
 
 That's it. API Sentinel reads `sentinel_config.yaml` from the current directory, runs all enabled checks, and prints a color-coded report.
 
+## Web UI (optional)
+
+Prefer a browser over a config-file editor and memorized flags? Install the `[ui]` extra and launch the local UI.
+
+```bash
+pip install -e ".[ui]"
+sentinel ui
+```
+
+The UI binds to `http://127.0.0.1:8765` by default, opens your browser automatically, and gives you:
+
+- **Config viewer** at `/config` — read your `sentinel_config.yaml` with field-level visibility into the endpoint table, check settings, and which env var names are bound to which auth roles.
+- **Config editor** at `/config/edit` — full HTMX-driven form for editing every field, adding/removing endpoint rows in-place, atomic-write to disk with optional `.bak` backup. Token fields are populated from your `SENTINEL_*` env vars — **the UI never accepts secret values as input**.
+- **Scans** at `/scans` — kick off a scan, watch live progress via HTMX polling, browse a color-coded findings explorer once complete.
+- **One-click actions on every finished scan** — severity filters (All / Critical only / Warning+ / Passing only), Download JSON (same schema as `sentinel scan --output json`), and Re-scan with same config.
+
+### Launch flags
+
+```bash
+sentinel ui --port 9000              # bind to a different port
+sentinel ui --no-browser             # don't auto-open the browser (headless / SSH)
+sentinel ui --host 127.0.0.1         # the default; only loopback bind
+```
+
+If port 8765 is busy the launcher falls back to an OS-assigned free port and prints the URL prominently — no manual port hunting needed.
+
+### Security model
+
+The UI is **localhost-only by default** (binds `127.0.0.1`). No auth gate, no TLS, no remote access. It exists for local development; it is not a production-deploy surface.
+
+The single hardest invariant: **the UI never accepts secret values as input.** Token fields are dropdowns populated server-side from env var names matching `SENTINEL_*`. A parametrized test (`tests/ui/test_env_var_isolation.py`) sets canary secret values and asserts no value appears in any response body or header across every UI route. New routes must be added to that test's `_ROUTES` list — the discipline is enforced in CI.
+
+If you keep tokens in a `.env` file, the UI loads it once at startup (matching the CLI's behavior). Editing `.env` while the UI is running requires a UI restart to pick up the new values.
+
+CI/CD integration continues to use the CLI exclusively — `sentinel scan` is the canonical pipeline entry point.
+
 ## CLI Reference
 
 ```
-sentinel [--config PATH] [--output FORMAT] [--severity LEVEL]
-         [--checks CATEGORIES] [--fail-on LEVEL]
-         [--report llm] [--llm-backend BACKEND]
+sentinel scan [--config PATH] [--output FORMAT] [--severity LEVEL]
+              [--checks CATEGORIES] [--fail-on LEVEL]
+              [--report llm] [--llm-backend BACKEND]
+
+sentinel ui   [--host HOST] [--port PORT] [--no-browser]
+sentinel init [--spec SPEC]    # reserved verb; OpenAPI auto-config coming
 ```
+
+Bare `sentinel ...` (no subcommand) is equivalent to `sentinel scan ...` for backward compatibility with v0.1.0 invocations. CI scripts and existing usage do not need to change.
 
 ### Flags
 
@@ -259,10 +306,12 @@ checks:
 checks:
   input_handling:
     enabled: true
-    max_payload_kb: 10240                # Max payload size in KB
+    max_payload_kb: 1024                 # Max payload size in KB (default: 1 MB)
 ```
 
 **What it checks:** Oversized payload rejection (expects 413/400). Malformed Content-Type handling (expects 400/415). Injection probe strings in query parameters (SQL, XSS, SSTI, path traversal) -- expects 400, flags 500 as critical.
+
+**Note:** The default 1 MB payload is enough to exercise rejection logic on most APIs. If you raise this much higher (e.g. 10+ MB) and the scan errors with a protocol-level exception, your hosting platform's edge layer may be choking on the upload. Either lower the value or be selective about which endpoints carry this check.
 
 ## OWASP API Security Top 10 Coverage
 
@@ -398,6 +447,22 @@ The target API is unreachable. Check that:
 - You have network access to the target
 - The timeout is sufficient (`meta.timeout_seconds`)
 
+### "API Sentinel UI extras are not installed"
+
+The web UI is an optional extra. Install it:
+
+```bash
+pip install -e ".[ui]"
+```
+
+### UI dropdown shows "no SENTINEL_* env vars in scope"
+
+The UI loads env vars from `.env` (in the current working directory) plus your shell environment at launch time. If you set a new `SENTINEL_*` variable AFTER the UI is already running, restart the UI to pick it up. Persistent env vars (set via `[Environment]::SetEnvironmentVariable(..., "User")` on Windows or `~/.bashrc` on Unix) require a new shell session before launching the UI.
+
+### "Port 8765 in use, listening on N instead"
+
+The launcher's auto-fallback: another process holds 8765, so an OS-assigned free port is used instead. The actual URL is printed prominently. To force a specific port: `sentinel ui --port 9000`.
+
 ### LLM report: "requires additional dependencies"
 
 Install the SDK for your chosen backend:
@@ -433,7 +498,7 @@ api_sentinel/
 ├── pyproject.toml
 │
 ├── sentinel/
-│   ├── cli.py                    # CLI entry point
+│   ├── cli.py                    # CLI entry point (scan/ui/init dispatch)
 │   ├── config.py                 # Pydantic config loader
 │   ├── runner.py                 # Check orchestrator
 │   ├── reporter.py               # Terminal + JSON output
@@ -451,14 +516,22 @@ api_sentinel/
 │   │   ├── claude.py             # Anthropic Claude backend
 │   │   ├── openai_backend.py     # OpenAI backend
 │   │   └── ollama.py             # Ollama local backend
-│   └── utils/
-│       ├── http_client.py        # Shared httpx client factory
-│       └── env_loader.py         # Safe env var resolution
+│   ├── utils/
+│   │   ├── http_client.py        # Shared httpx client factory
+│   │   └── env_loader.py         # Safe env var resolution
+│   └── ui/                       # Optional [ui] extra (FastAPI + HTMX + Jinja)
+│       ├── server.py             # FastAPI app factory
+│       ├── launcher.py           # `sentinel ui` entry point
+│       ├── routes/               # Page + HTMX fragment routes
+│       ├── services/             # config_io, env_vars, form_parser, scan_runner
+│       ├── templates/            # Jinja2 templates (+ partials/)
+│       └── static/               # htmx.min.js (vendored), styles.css
 │
 └── tests/
     ├── conftest.py               # Shared fixtures
-    ├── unit/                     # Config, reporter, LLM tests
-    └── security/                 # Per-category check tests
+    ├── unit/                     # CLI, config, reporter, LLM tests
+    ├── security/                 # Per-category check tests
+    └── ui/                       # UI route + invariant tests
 ```
 
 ## License

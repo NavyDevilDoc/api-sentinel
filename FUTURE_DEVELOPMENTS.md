@@ -87,8 +87,90 @@ alternatives. Adoption impact is high.
 
 ---
 
+### EndpointConfig: Request Body Support
+**Tier:** 🔴 Essential
+**Prerequisite for:** `sentinel init`, useful real-world POST testing
+**Discovered:** 2026-05-16 during animeintel.app testing
+
+Today's `EndpointConfig` has no way to express the request body for POST/PUT/PATCH
+endpoints. As a result, Sentinel sends empty or garbage bodies during `input_handling`
+and `rate_limit` checks. Modern APIs validate request schemas with pydantic / FastAPI /
+Marshmallow and reject bad bodies with 400/422 before any rate-limit or business logic
+runs. The tool's input_handling check happens to handle this gracefully (422 is treated
+the same as 400), but **rate-limit testing on POST endpoints is effectively impossible**
+— the burst will hit body-validation 422s, never reaching the rate-limit middleware.
+
+Add a `body` field to `EndpointConfig`:
+
+```yaml
+endpoints:
+  - path: /api/dna
+    method: POST
+    body:
+      titles: ["Cowboy Bebop", "Vinland Saga"]
+  - path: /api/search
+    method: POST
+    body:
+      query: "psychological thriller"
+      lens: "Intelligent Search"
+```
+
+Sentinel sends `body` as JSON in test requests. For `input_handling` mutations, the
+check starts FROM the valid body and mutates from there: oversize by appending bytes,
+break content-type, inject probes into string fields. This gives every check category
+a chance to exercise the endpoint's actual logic.
+
+**Implementation note:** the body must be a literal value, not a reference to env vars,
+so the configuration stays self-describing. For endpoints with sensitive payload fields
+(passwords in test login bodies), recommend an `env:VAR_NAME` value shorthand similar
+to how `auth.token_primary` is handled.
+
+---
+
+### AuthConfig: Auth Scheme Selector
+**Tier:** 🔴 Essential
+**Prerequisite for:** real-world API testing beyond Bearer-only stacks
+**Discovered:** 2026-05-16 during animeintel.app admin endpoint testing
+
+Today's `auth` check hardcodes `Authorization: Bearer <token>`. Any API using HTTP
+Basic Auth, custom API-key headers, or query-string tokens is effectively untestable
+by the `auth`, `authorization` (BOLA), and `rate_limit` checks. The user is forced to
+choose between false positives (Bearer-token probes against a Basic-Auth endpoint
+always 401, flagged as critical) or skipping the endpoint entirely.
+
+Add a `scheme` selector to `AuthConfig`:
+
+```yaml
+auth:
+  scheme: basic           # bearer (default) | basic | header | apikey
+  token_primary: SENTINEL_ADMIN_USER:SENTINEL_ADMIN_PASS
+  header_name: X-API-Key  # only consulted when scheme == "header" or "apikey"
+```
+
+Per-scheme behavior:
+
+| Scheme | Header constructed | `token_primary` format |
+|---|---|---|
+| `bearer` (default) | `Authorization: Bearer <value>` | env var name |
+| `basic` | `Authorization: Basic base64(user:pass)` | `USER_ENV:PASS_ENV` (colon-joined env var names) |
+| `header` | `<header_name>: <value>` | env var name |
+| `apikey` | `<header_name>: <value>` OR `?api_key=<value>` (driven by `header_name` shape) | env var name |
+
+**Implementation note:** the existing `auth.py` check sends 4 probes (no token, empty,
+malformed, valid). Each scheme needs analogous "malformed" examples:
+- bearer: `Bearer xxxxxxxx` (today's behavior)
+- basic: `Basic notbase64` or `Basic ` (empty)
+- header: `<header_name>: garbage`
+- apikey: same as header
+
+Severity rubric stays the same — 401 to a malformed token is PASS, 200 is CRITICAL
+(auth bypass).
+
+---
+
 ### `sentinel init` — OpenAPI/Swagger Auto-Config
 **Tier:** 🔴 Essential
+**Depends on:** EndpointConfig body support + AuthConfig scheme selector (both above)
 
 The single highest-leverage DX feature. Drops config writing time from ~20 minutes
 to one command.

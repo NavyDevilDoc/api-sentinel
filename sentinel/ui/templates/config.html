@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="config-viewer">
+    <h2>Configuration</h2>
+
+    <form class="path-picker" method="get" action="/config">
+        <label for="picker_path">File:</label>
+        <input id="picker_path" type="text" name="path"
+               value="{{ requested_path or '' }}"
+               placeholder="sentinel_config.yaml (leave blank for default)">
+        <button type="submit" class="btn-secondary">View</button>
+        <a class="btn-secondary"
+           href="/config/edit{% if requested_path %}?path={{ requested_path|urlencode }}{% endif %}">
+            Edit
+        </a>
+    </form>
+
+    {% if error %}
+    <div class="alert alert-error">
+        <strong>Error:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    {% if not result or not result.loaded %}
+    <div class="empty-state">
+        <h3>No config loaded</h3>
+        <p>
+            Looking at:
+            <code>{{ resolved_path or requested_path or "sentinel_config.yaml" }}</code>
+        </p>
+        {% if result and result.error and not error %}
+        <p class="muted">{{ result.error }}</p>
+        {% endif %}
+        <p>
+            To get started, copy the example config:
+            <br>
+            <code>cp sentinel_config.example.yaml sentinel_config.yaml</code>
+        </p>
+        <p class="muted">
+            (Or, when <code>sentinel init</code> is implemented, it will
+            build one from your OpenAPI spec.)
+        </p>
+    </div>
+    {% else %}
+    {% set config = result.config %}
+
+    <p class="muted">
+        Loaded from <code>{{ resolved_path }}</code> &middot; read-only view
+        &middot;
+        <a href="/config/edit{% if requested_path %}?path={{ requested_path }}{% endif %}">Edit this config</a>
+    </p>
+
+    <form method="post" action="/scans{% if requested_path %}?path={{ requested_path|urlencode }}{% endif %}" class="scan-launcher">
+        <button type="submit" class="btn-primary">Run scan now</button>
+    </form>
+
+    <h3>Meta</h3>
+    <dl class="meta">
+        <dt>Project</dt><dd>{{ config.meta.project }}</dd>
+        <dt>Base URL</dt><dd><code>{{ config.meta.base_url }}</code></dd>
+        <dt>Timeout</dt><dd>{{ config.meta.timeout_seconds }}s</dd>
+    </dl>
+
+    <h3>Auth</h3>
+    <dl class="meta">
+        <dt>Primary token</dt>
+        <dd>
+            <code>{{ token_primary.name }}</code>
+            {% if not token_primary.is_set %}
+            <span class="env-missing">(not set)</span>
+            {% endif %}
+        </dd>
+        {% if token_secondary %}
+        <dt>Secondary token</dt>
+        <dd>
+            <code>{{ token_secondary.name }}</code>
+            {% if not token_secondary.is_set %}
+            <span class="env-missing">(not set)</span>
+            {% endif %}
+        </dd>
+        {% endif %}
+    </dl>
+
+    <h3>Endpoints ({{ config.endpoints | length }})</h3>
+    {% if config.endpoints %}
+    <table class="endpoints">
+        <thead>
+            <tr>
+                <th>Method</th>
+                <th>Path</th>
+                <th>Auth?</th>
+                <th>Owned by</th>
+                <th>Rate-limit sensitive?</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ep in config.endpoints %}
+            <tr>
+                <td><span class="method method-{{ ep.method | lower }}">{{ ep.method }}</span></td>
+                <td><code>{{ ep.path }}</code></td>
+                <td>{{ "Yes" if ep.requires_auth else "No" }}</td>
+                <td>{{ ep.owned_by or "—" }}</td>
+                <td>{{ "Yes" if ep.rate_limit_sensitive else "No" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="muted">No endpoints configured.</p>
+    {% endif %}
+
+    <h3>Checks</h3>
+    <table class="checks">
+        <thead>
+            <tr><th>Category</th><th>Enabled</th><th>Settings</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Transport</td>
+                <td>{{ "Yes" if config.checks.transport.enabled else "No" }}</td>
+                <td class="muted">
+                    HTTPS redirect: {{ config.checks.transport.require_https_redirect }};
+                    min TLS: {{ config.checks.transport.min_tls_version }};
+                    cert warn-at: {{ config.checks.transport.check_cert_expiry_days }} days
+                </td>
+            </tr>
+            <tr>
+                <td>Headers</td>
+                <td>{{ "Yes" if config.checks.headers.enabled else "No" }}</td>
+                <td class="muted">
+                    required: {{ config.checks.headers.required | length }};
+                    forbidden: {{ config.checks.headers.forbidden_leakage | length }}
+                </td>
+            </tr>
+            <tr>
+                <td>Auth</td>
+                <td>{{ "Yes" if config.checks.auth.enabled else "No" }}</td>
+                <td class="muted">—</td>
+            </tr>
+            <tr>
+                <td>Authorization (BOLA)</td>
+                <td>{{ "Yes" if config.checks.authorization.enabled else "No" }}</td>
+                <td class="muted">
+                    {% if config.checks.authorization.enabled and not config.auth.token_secondary %}
+                    <span class="env-missing">requires token_secondary</span>
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td>Rate limit</td>
+                <td>{{ "Yes" if config.checks.rate_limit.enabled else "No" }}</td>
+                <td class="muted">
+                    burst: {{ config.checks.rate_limit.request_burst }} req /
+                    {{ config.checks.rate_limit.burst_window_seconds }}s
+                </td>
+            </tr>
+            <tr>
+                <td>Input handling</td>
+                <td>{{ "Yes" if config.checks.input_handling.enabled else "No" }}</td>
+                <td class="muted">
+                    max payload: {{ config.checks.input_handling.max_payload_kb }} KB
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    {% endif %}
+</section>
+{% endblock %}

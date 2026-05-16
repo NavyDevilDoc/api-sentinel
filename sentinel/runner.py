@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from sentinel.checks.auth import AuthCheck
 from sentinel.checks.authorization import AuthorizationCheck
-from sentinel.checks.base import BaseCheck, CheckResult
+from sentinel.checks.base import BaseCheck, CheckResult, Severity
 from sentinel.checks.headers import HeadersCheck
 from sentinel.checks.input_handling import InputHandlingCheck
 from sentinel.checks.rate_limit import RateLimitCheck
@@ -114,8 +114,30 @@ async def run_checks(
             if check_cls is None:
                 continue  # Category not yet implemented
             check = check_cls()
-            category_results = await check.run(config, client)
-            results.extend(category_results)
+            # Per-category exception isolation: one check raising should
+            # not abort the entire scan. We catch broad Exception (not
+            # BaseException, so KeyboardInterrupt etc. still propagate)
+            # and surface the failure as a CRITICAL finding scoped to
+            # the category. Other categories continue running.
+            try:
+                category_results = await check.run(config, client)
+                results.extend(category_results)
+            except Exception as e:
+                results.append(CheckResult(
+                    check_id=f"{category}.unhandled_exception",
+                    name=f"{category} check failed to complete",
+                    severity=Severity.CRITICAL,
+                    passed=False,
+                    detail=f"{type(e).__name__}: {e}",
+                    expected="Check should run to completion",
+                    recommendation=(
+                        "Often indicates a protocol/environment mismatch "
+                        "(HTTP/2 negotiation, edge size limits, etc.). "
+                        "Try disabling this check category in the config "
+                        "or adjusting its settings (e.g. lower "
+                        "max_payload_kb for input_handling)."
+                    ),
+                ))
 
     elapsed_ms = (time.monotonic() - start) * 1000
 

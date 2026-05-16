@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="scans-page">
+    <h2>Scans</h2>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form class="path-picker" method="post" action="/scans">
+        <label for="scan_path">Config:</label>
+        <input id="scan_path" type="text" name="path"
+               value="{{ default_path }}"
+               placeholder="sentinel_config.yaml">
+        <button type="submit" class="btn-primary">Start scan</button>
+    </form>
+
+    <p class="muted">
+        Starts a new run against the target defined in the config's
+        <code>meta.base_url</code>. Existing scans below.
+    </p>
+
+    <h3>Recent scans</h3>
+    {% if scans %}
+    <table class="scans-list">
+        <thead>
+            <tr>
+                <th>Started</th>
+                <th>Project</th>
+                <th>Target</th>
+                <th>Status</th>
+                <th>Duration</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in scans %}
+            <tr>
+                <td>{{ s.started_at.strftime('%Y-%m-%d %H:%M:%S') }} UTC</td>
+                <td>{{ s.project }}</td>
+                <td><code>{{ s.target }}</code></td>
+                <td><span class="status-badge status-{{ s.status }}">{{ s.status }}</span></td>
+                <td>{% if s.duration_ms %}{{ s.duration_ms | round(0) | int }} ms{% else %}—{% endif %}</td>
+                <td><a href="/scans/{{ s.id }}">view</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="muted">No scans yet. Start one with the form above.</p>
+    {% endif %}
+</section>
+{% endblock %}

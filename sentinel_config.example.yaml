@@ -60,4 +60,4 @@ checks:
 
   input_handling:
     enabled: true
-    max_payload_kb: 10240
+    max_payload_kb: 1024

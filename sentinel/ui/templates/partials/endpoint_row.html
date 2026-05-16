@@ -1,0 +1,75 @@
+{# partials/endpoint_row.html
+   One editable endpoint. Field names use the bracket-dot notation that
+   form_parser.parse_form_to_dict understands.
+   Required context: index (int), data (dict for this endpoint),
+                     resolved_path (str), errors (dict). #}
+<div class="endpoint-row" data-index="{{ index }}">
+    <div class="endpoint-grid">
+        <div class="form-field">
+            <label>Method</label>
+            <select name="endpoints[{{ index }}].method">
+                {% for m in ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] %}
+                <option value="{{ m }}"{% if data.method == m %} selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-field form-field-grow">
+            <label>Path</label>
+            <input type="text" name="endpoints[{{ index }}].path"
+                   value="{{ data.path|default('') }}"
+                   placeholder="/resource/{id}" required>
+            {% set err_key = 'endpoints[' ~ index ~ '].path' %}
+            {% if err_key in errors %}
+            <span class="field-error">{{ errors[err_key] }}</span>
+            {% endif %}
+        </div>
+
+        <div class="form-field">
+            <label class="checkbox-label">
+                <input type="hidden" name="endpoints[{{ index }}].requires_auth" value="false">
+                <input type="checkbox" name="endpoints[{{ index }}].requires_auth" value="true"
+                       {% if data.requires_auth %}checked{% endif %}>
+                Requires auth
+            </label>
+        </div>
+    </div>
+
+    <div class="endpoint-grid endpoint-grid-secondary">
+        <div class="form-field">
+            <label>Owned by</label>
+            <select name="endpoints[{{ index }}].owned_by">
+                <option value=""{% if not data.owned_by %} selected{% endif %}>— none —</option>
+                <option value="token_primary"{% if data.owned_by == 'token_primary' %} selected{% endif %}>token_primary</option>
+                <option value="token_secondary"{% if data.owned_by == 'token_secondary' %} selected{% endif %}>token_secondary</option>
+            </select>
+        </div>
+
+        <div class="form-field">
+            <label>Test IDs <span class="muted">(comma-separated)</span></label>
+            <input type="text" name="endpoints[{{ index }}].test_ids"
+                   value="{% if data.test_ids is iterable and data.test_ids is not string %}{{ data.test_ids | join(', ') }}{% else %}{{ data.test_ids|default('') }}{% endif %}"
+                   placeholder="1, 2, 3">
+        </div>
+
+        <div class="form-field">
+            <label class="checkbox-label">
+                <input type="hidden" name="endpoints[{{ index }}].rate_limit_sensitive" value="false">
+                <input type="checkbox" name="endpoints[{{ index }}].rate_limit_sensitive" value="true"
+                       {% if data.rate_limit_sensitive %}checked{% endif %}>
+                Rate-limit sensitive
+            </label>
+        </div>
+
+        <div class="form-field form-field-right">
+            <button type="button" class="btn-remove"
+                    hx-post="/config/endpoints/remove?index={{ index }}&path={{ resolved_path | urlencode }}"
+                    hx-target="#config-form-wrapper"
+                    hx-swap="innerHTML"
+                    hx-include="#config-form"
+                    hx-confirm="Remove this endpoint?">
+                Remove
+            </button>
+        </div>
+    </div>
+</div>

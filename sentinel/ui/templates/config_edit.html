@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="config-editor">
+    <h2>Edit Configuration</h2>
+
+    <form class="path-picker" method="get" action="/config/edit">
+        <label for="picker_path">File:</label>
+        <input id="picker_path" type="text" name="path"
+               value="{{ requested_path or '' }}"
+               placeholder="sentinel_config.yaml (leave blank for default)">
+        <button type="submit" class="btn-secondary">Load</button>
+        <a class="btn-secondary"
+           href="/config{% if requested_path %}?path={{ requested_path|urlencode }}{% endif %}">
+            View read-only
+        </a>
+    </form>
+
+    <p class="muted path-current">
+        Current: <code>{{ resolved_path or "sentinel_config.yaml" }}</code>
+    </p>
+
+    <div id="config-form-wrapper">
+        {% include "partials/config_form.html" %}
+    </div>
+</section>
+{% endblock %}

@@ -57,6 +57,11 @@ def create_client(
         base_url=base_url,
         timeout=httpx.Timeout(timeout_seconds),
         headers=headers,
-        http2=True,
+        # HTTP/1.1 only. Sentinel tests application behavior, not server
+        # protocol behavior — HTTP/1.1 is universal and avoids genuine
+        # compatibility hazards encountered against Railway / Vercel /
+        # Cloudflare-fronted APIs (h2 negotiation can raise
+        # LocalProtocolError on certain request shapes, aborting scans).
+        http2=False,
         follow_redirects=False,
     )
